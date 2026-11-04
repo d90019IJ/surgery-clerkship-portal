@@ -1,4 +1,5 @@
 import {createHandler as quizHandler,sha256} from './quiz-application.mjs';
+import {studentCohorts,validScore} from '../web/score-rules.mjs';
 export const SOURCE='https://surgery-clerkship-selection.d90019.chatgpt.site';
 const ADMIN_ACTIONS=new Set(['admin-list','admin-toggle','admin-schedule','admin-survey','admin-roster','admin-roster-add','admin-open-now','admin-preview','admin-bank']);
 export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io']}){
@@ -36,8 +37,19 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
       if(!source.ok)return reply({error:'暫時無法取得完整選科資料，請稍後再試。'},503);
       const grades=await source.json();if(!Array.isArray(grades.rows))return reply({error:'選科資料不完整，已停止操作。'},503);
       if(body.action==='dashboard'){
-        const [exams,submissions,rosters]=await Promise.all([repository.catalog(),repository.submissions(),repository.rosters()]);
-        return reply({rows:grades.rows,exams,submissions,rosters,sourceUpdatedAt:new Date().toISOString()});
+        const [exams,submissions,rosters,osce]=await Promise.all([repository.catalog(),repository.submissions(),repository.rosters(),repository.osce()]);
+        const known=new Set(studentCohorts(grades.rows).map(c=>c.id));
+        return reply({rows:grades.rows,exams,submissions,rosters,osce:osce.filter(r=>known.has(r.id)),sourceUpdatedAt:new Date().toISOString()});
+      }
+      if(body.action==='osce-save'||body.action==='osce-history'){
+        const cohort=studentCohorts(grades.rows).find(c=>c.id===body.id);
+        if(!cohort)return reply({error:'找不到這位學生的實習梯次，請重新載入。'},404);
+        if(body.action==='osce-history')return reply({history:await repository.osceHistory(cohort.id)});
+        if(![body.suture,body.dressing].every(v=>v===null||validScore(v)))return reply({error:'縫合與換藥請填 0～100 分，未評分請留白。'},400);
+        if(typeof body.note!=='string'||body.note.length>500||typeof body.revision!=='string'||body.revision.length>40)return reply({error:'備註或版本資料不正確，請重新載入。'},400);
+        const result=await repository.saveOsce({p_id:cohort.id,p_student_id:cohort.row.studentId,p_batch:cohort.row.batch,p_start:cohort.start,p_end:cohort.end,p_suture:body.suture,p_dressing:body.dressing,p_note:body.note,p_revision:body.revision,p_actor:session.employeeId});
+        if(result.conflict)return reply({error:'此成績已被其他視窗更新。請先保留本次輸入，關閉後重新載入，再核對最新分數。'},409);
+        return reply(result);
       }
       if(body.action==='grade-save'){
         if(!body.record||!grades.rows.some(r=>r.id===body.record.id))return reply({error:'找不到這段實習安排。'},404);

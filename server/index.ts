@@ -7,6 +7,9 @@ const repository={
   quiz:supabaseRepository(url,key),
   catalog:()=>all('core_quiz_exams?select=id,title,open,opens_at,closes_at&order=opens_at.desc.nullslast,id.asc'),
   submissions:()=>all('core_quiz_submissions?select=exam_id,student_id,name,score,submitted_at,survey_complete&order=exam_id.asc,student_id.asc'),
-  rosters:()=>all('core_quiz_roster?select=exam_id,student_id&order=exam_id.asc,student_id.asc')
+  rosters:()=>all('core_quiz_roster?select=exam_id,student_id&order=exam_id.asc,student_id.asc'),
+  osce:()=>all('clerk_osce_scores?select=*&order=id.asc'),
+  osceHistory:(id:string)=>all('clerk_osce_history?select=*&record_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
+  saveOsce:async(data:unknown)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_osce',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Save unavailable');return await r.json();}
 };
 Deno.serve(createPortal({codec:await sessionCodec(key),repository}));

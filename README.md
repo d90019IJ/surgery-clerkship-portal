@@ -10,7 +10,7 @@ GitHub Pages 提供統一入口，Supabase Edge Function 提供助教授權與�
 - 助教管理：沿用選科助教帳號，查看逐場講堂成績及學生整合明細。
 - 完整講師後台、題庫審閱及匿名問卷統計仍使用原講堂管理碼，可由平台連結進入。
 
-尚未搬移學生選科／學藝審核流程。尚未加入 OSCE、護照完成率輸入及學期講堂彙總規則，不產生實習最終總分。
+尚未搬移學生選科／學藝審核流程。尚未加入護照完成率輸入及學期講堂彙總規則，不產生實習最終總分。
 
 ## 資料與權限
 
@@ -31,10 +31,18 @@ GitHub Pages 提供統一入口，Supabase Edge Function 提供助教授權與�
 
 `npm test`、`npm run check`；`npm start` 在 127.0.0.1:4180 提供靜態預覽。
 
-將 server/index.ts、server/deno.json 及 server/*.mjs 部署為 Supabase Edge Function surgery-clerkship-portal。verify_jwt=false，由函式內部加密票證及原站助教工作階段實作認證。
+將 server/index.ts、server/deno.json、server/*.mjs 與 web/score-rules.mjs 依相對路徑部署為 Supabase Edge Function surgery-clerkship-portal。verify_jwt=false，由函式內部加密票證及原站助教工作階段實作認證。
 
 僅將 web/ 發布到 GitHub Pages。現有 core-surgery-quiz 專案、函式、題庫與成績不修改。部署不建立任何正式配對或測試成績。
 
 ## 擴充方向
 
-後續可另行搬移學生選科與審核，再加入 OSCE／護照扣分及已確認的講堂學期計分規則。切換選科資料來源前須保留備份、比對筆數並明確指定唯一寫入來源。
+後續可另行搬移學生選科與審核，再加入護照扣分及已確認的講堂學期計分規則。切換選科資料來源前須保留備份、比對筆數並明確指定唯一寫入來源。
+
+## OSCE 計分
+
+學生整合成績可登錄縫合與換藥（各 0–100 分，可留白）。OSCE 平均＝（縫合＋換藥）÷2，加權 20%；加上醫師平均×80%，顯示實習加權小計，尚未扣除護照未完成的 10 分。缺任一必要分數時不產生小計；只在顯示時保留兩位小數，計算不先四捨五入。
+
+OSCE 儲存在 Supabase clerk_osce_scores；以學號、梯次及完整實習起迄日區隔，月份篩選不改變計算範圍。實習起迄日或梯次變動會形成新紀錄，須重新核對。clerk_osce_history 保留異動前後、員編及時間。資料表啟用 RLS，公眾及一般登入角色無權讀寫；只有經原站助教工作階段驗證的 Edge Function 可操作。save_clerk_osce 在同一交易內保存分數和歷程，並拒絕舊版本覆寫。
+
+資料庫建立腳本：database/osce.sql（已部署）；部署函式時入口為 server/index.ts，匯入設定為 server/deno.json，須一併提供 web/score-rules.mjs。

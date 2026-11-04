@@ -7,8 +7,10 @@ export function gradeTotals(rows, osce = {}) {
   const osceAverage = validScore(osce.suture) && validScore(osce.dressing) ? (osce.suture + osce.dressing) / 2 : null;
   const physicianWeighted = average === null ? null : average * 0.8;
   const osceWeighted = osceAverage === null ? null : osceAverage * 0.2;
+  const subtotal = physicianWeighted === null || osceWeighted === null ? null : physicianWeighted + osceWeighted;
+  const passportDeduction = validScore(osce.passport_completion) ? (osce.passport_completion < 90 ? 10 : 0) : null;
   return {expected: expected.length, received: received.length, average, physicianWeighted, osceAverage, osceWeighted,
-    subtotal: physicianWeighted === null || osceWeighted === null ? null : physicianWeighted + osceWeighted};
+    subtotal, passportDeduction, finalScore: subtotal === null || passportDeduction === null ? null : subtotal - passportDeduction};
 }
 // Scope scores to the complete student's batch, never to the current month filter.
 export function studentCohorts(rows) {

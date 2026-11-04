@@ -41,13 +41,15 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
         const known=new Set(studentCohorts(grades.rows).map(c=>c.id));
         return reply({rows:grades.rows,exams,submissions,rosters,osce:osce.filter(r=>known.has(r.id)),sourceUpdatedAt:new Date().toISOString()});
       }
-      if(body.action==='osce-save'||body.action==='osce-history'){
+      if(body.action==='osce-save'||body.action==='assessment-save'||body.action==='osce-history'){
         const cohort=studentCohorts(grades.rows).find(c=>c.id===body.id);
         if(!cohort)return reply({error:'找不到這位學生的實習梯次，請重新載入。'},404);
         if(body.action==='osce-history')return reply({history:await repository.osceHistory(cohort.id)});
         if(![body.suture,body.dressing].every(v=>v===null||validScore(v)))return reply({error:'縫合與換藥請填 0～100 分，未評分請留白。'},400);
+        const withPassport=body.action==='assessment-save';
+        if(withPassport&&body.passportCompletion!==null&&!validScore(body.passportCompletion))return reply({error:'護照完成率請填 0～100%，尚未確認請留白。'},400);
         if(typeof body.note!=='string'||body.note.length>500||typeof body.revision!=='string'||body.revision.length>40)return reply({error:'備註或版本資料不正確，請重新載入。'},400);
-        const result=await repository.saveOsce({p_id:cohort.id,p_student_id:cohort.row.studentId,p_batch:cohort.row.batch,p_start:cohort.start,p_end:cohort.end,p_suture:body.suture,p_dressing:body.dressing,p_note:body.note,p_revision:body.revision,p_actor:session.employeeId});
+        const result=await repository.saveOsce({p_id:cohort.id,p_student_id:cohort.row.studentId,p_batch:cohort.row.batch,p_start:cohort.start,p_end:cohort.end,p_suture:body.suture,p_dressing:body.dressing,p_note:body.note,p_revision:body.revision,p_actor:session.employeeId,...(withPassport?{p_passport_completion:body.passportCompletion}:{})});
         if(result.conflict)return reply({error:'此成績已被其他視窗更新。請先保留本次輸入，關閉後重新載入，再核對最新分數。'},409);
         return reply(result);
       }

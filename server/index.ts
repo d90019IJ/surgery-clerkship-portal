@@ -10,6 +10,6 @@ const repository={
   rosters:()=>all('core_quiz_roster?select=exam_id,student_id&order=exam_id.asc,student_id.asc'),
   osce:()=>all('clerk_osce_scores?select=*&order=id.asc'),
   osceHistory:(id:string)=>all('clerk_osce_history?select=*&record_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
-  saveOsce:async(data:unknown)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_osce',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Save unavailable');return await r.json();}
+  saveOsce:async(data:Record<string,unknown>)=>{const rpc='p_passport_completion' in data?'save_clerk_assessment':'save_clerk_osce';const r=await fetch(url+'/rest/v1/rpc/'+rpc,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Save unavailable');return await r.json();}
 };
 Deno.serve(createPortal({codec:await sessionCodec(key),repository}));

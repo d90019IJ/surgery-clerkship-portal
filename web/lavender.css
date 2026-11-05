@@ -1,6 +1,6 @@
-/* Mist lavender palette, with larger Traditional Chinese handwriting. */
+/* Mist lavender palette, with larger rounded Traditional Chinese type. */
 :root{--ink:#302b3b;--muted:#625a70;--green:#65517e;--line:#bcb5c8;--paper:#efedf3;--gold:#735b8a;--surface:#fcfbfe;--tint:#e7e1ee;--warning:#81420d;--warning-bg:#fff2e2;--success:#285c45}
-body{font-family:"LXGW WenKai TC","BiauKai","DFKai-SB","Microsoft JhengHei",cursive;font-size:18px;line-height:1.7}
+body{font-family:"Huninn","Microsoft JhengHei","PingFang TC",sans-serif;font-size:18px;line-height:1.7}
 button,input,select,textarea{font-family:inherit}
 :focus-visible{outline-color:#80629f}
 .top,.entry,.filters,.table-wrap,.schedule,dialog,.student-sheet,.student-save-bar,.lecture-card{background:var(--surface)}

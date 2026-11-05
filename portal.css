@@ -7,3 +7,5 @@
 #student-editor-fields{min-width:0}.student-sheet{min-width:0}.student-navigation select{max-width:100%}
 
 .student-sheet input,.student-sheet textarea,.student-sheet select{scroll-margin-bottom:110px}
+
+.quick-filters{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 0}.quick-count{display:inline-block;margin-left:8px;border-radius:20px;background:#ffffff33;padding:1px 7px;min-width:24px}.secondary .quick-count{background:#eaf2e7}.lecture-summary{display:flex;justify-content:space-between;gap:16px;align-items:center;border:1px solid #dbe3cd;background:#f8f8ef;padding:18px;border-radius:9px;margin:18px 0}.lecture-summary h3{font-size:16px;margin:0 0 10px}.lecture-summary p{font-size:12px;margin:7px 0}.lecture-summary .hint{margin-bottom:0}@media(max-width:720px){.lecture-summary{flex-direction:column;align-items:start}.quick-filters button{flex:1}.quick-filters .primary,.quick-filters .secondary{padding:9px 10px;font-size:12px}}

@@ -9,6 +9,9 @@ const repository={
   submissions:()=>all('core_quiz_submissions?select=exam_id,student_id,name,score,submitted_at,survey_complete&order=exam_id.asc,student_id.asc'),
   rosters:()=>all('core_quiz_roster?select=exam_id,student_id&order=exam_id.asc,student_id.asc'),
   osce:()=>all('clerk_osce_scores?select=*&order=id.asc'),
+  reminderReviews:()=>all('clerk_reminder_reviews?select=*&order=row_id.asc'),
+  reminderHistory:(id:string)=>all('clerk_reminder_review_history?select=*&row_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
+  saveReminderReview:async(data:Record<string,unknown>)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_reminder_review',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Review save unavailable');return await r.json();},
   osceHistory:(id:string)=>all('clerk_osce_history?select=*&record_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
   saveOsce:async(data:Record<string,unknown>)=>{const rpc='p_passport_completion' in data?'save_clerk_assessment':'save_clerk_osce';const r=await fetch(url+'/rest/v1/rpc/'+rpc,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Save unavailable');return await r.json();}
 };

@@ -1,8 +1,9 @@
 import {createHandler as quizHandler,sha256} from './quiz-application.mjs';
 import {studentCohorts,validScore} from '../web/score-rules.mjs';
+import {reminderEligible,reminderSourceVersion,reminderItems,reminderReview} from '../web/reminder-rules.mjs';
 export const SOURCE='https://surgery-clerkship-selection.d90019.chatgpt.site';
 const ADMIN_ACTIONS=new Set(['admin-list','admin-toggle','admin-schedule','admin-survey','admin-roster','admin-roster-add','admin-open-now','admin-preview','admin-bank']);
-export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io']}){
+export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io'],now=Date.now}){
   return async request=>{
     const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
     const reply=(body,status=200)=>Response.json(body,{status,headers});
@@ -36,6 +37,22 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
       if(source.status===403||source.status===401)return reply({error:'原選科系統登入已失效，請重新登入。'},401);
       if(!source.ok)return reply({error:'暫時無法取得完整選科資料，請稍後再試。'},503);
       const grades=await source.json();if(!Array.isArray(grades.rows))return reply({error:'選科資料不完整，已停止操作。'},503);
+      if(body.action==='reminder-list'){
+        const records=await repository.reminderReviews(),time=now();
+        return reply({items:reminderItems(grades.rows,records,time),asOf:new Date(time).toISOString(),mailEnabled:false});
+      }
+      if(body.action==='reminder-review'||body.action==='reminder-history'){
+        const row=grades.rows.find(r=>r.id===body.id);
+        if(!row)return reply({error:'找不到這段實習安排，請重新載入名單。'},404);
+        if(body.action==='reminder-history')return reply({history:await repository.reminderHistory(row.id)});
+        if(typeof body.confirmed!=='boolean'||typeof body.revision!=='string'||body.revision.length>40||typeof body.sourceVersion!=='string'||body.sourceVersion.length>8000)return reply({error:'核對資料不完整，請重新載入名單。'},400);
+        const time=now();
+        if(!reminderEligible(row,time))return reply({error:'這筆資料已不符合待提醒條件，可能已補分、尚未到期或配對有異動。請重新載入名單。'},409);
+        if(body.sourceVersion!==reminderSourceVersion(row))return reply({error:'配對或實習資料已更新，請重新載入後再次核對。'},409);
+        const result=await repository.saveReminderReview({p_row_id:row.id,p_source_version:reminderSourceVersion(row),p_confirmed:body.confirmed,p_revision:body.revision,p_actor:session.employeeId});
+        if(result.conflict)return reply({error:'核對紀錄已被其他視窗更新，請重新載入後再確認。'},409);
+        const savedAt=now();return reply({...result,review:reminderReview(row,result.record,savedAt),asOf:new Date(savedAt).toISOString(),mailEnabled:false});
+      }
       if(body.action==='dashboard'){
         const [exams,submissions,rosters,osce]=await Promise.all([repository.catalog(),repository.submissions(),repository.rosters(),repository.osce()]);
         const known=new Set(studentCohorts(grades.rows).map(c=>c.id));

@@ -1,0 +1,64 @@
+/* Mist lavender palette, with larger Traditional Chinese handwriting. */
+:root{--ink:#302b3b;--muted:#625a70;--green:#65517e;--line:#bcb5c8;--paper:#efedf3;--gold:#735b8a;--surface:#fcfbfe;--tint:#e7e1ee;--warning:#81420d;--warning-bg:#fff2e2;--success:#285c45}
+body{font-family:"LXGW WenKai TC","BiauKai","DFKai-SB","Microsoft JhengHei",cursive;font-size:18px;line-height:1.7}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline-color:#80629f}
+.top,.entry,.filters,.table-wrap,.schedule,dialog,.student-sheet,.student-save-bar,.lecture-card{background:var(--surface)}
+.mark,.sidebar nav button.active{background:var(--green);color:#fff}
+.hero-stamp{background:var(--tint);border-color:var(--line)}
+.hero-stamp:before{border-color:var(--line)}
+.hero-stamp small,.side-note,.metrics small,.metrics span,td small,footer,.sidebar nav button,.term,#account{color:var(--muted)}
+.sidebar{background:#e9e4ef}
+.secondary{border-color:var(--line);background:var(--surface);color:var(--green)}
+.primary:hover{background:#513c6b}
+.secondary:hover{background:var(--tint)}
+.text-button:hover{background:var(--tint)}
+input,select,textarea{border-color:#aaa0b7;background:var(--surface);color:var(--ink);font-size:18px}
+input::placeholder,textarea::placeholder{color:#70677c;opacity:1}
+label{color:var(--ink);font-size:17px}
+table{font-size:18px}
+th{background:var(--tint);color:var(--ink);font-size:16px}
+td{border-bottom-color:#d9d2e2;line-height:1.7}
+td small{font-size:15px}
+.primary,.secondary,.text-button,.sidebar nav button{font-size:17px}
+.brand{font-size:22px}.brand small{font-size:11px}
+.eyebrow{font-size:13px}.term,#account{font-size:16px}
+.hint,.side-note,.workspace-head p,.student-sheet-head p,.student-navigation>span,.table-tools p,.section-title>span,.entry p,.entry b,.lecture-card p,.lecture-card>b,.schedule form p,dialog p,footer,.metrics small,.metrics span{font-size:16px}
+.pill{background:var(--tint);color:var(--muted);font-size:15px}
+.pill.green{background:#e4efe8;color:var(--success)}
+.success{color:var(--success);background:#e4efe8}
+.error{color:#923a32;font-size:17px}
+.amber{color:var(--warning)!important}
+.notice{background:var(--warning-bg);border-color:#d7bea1;font-size:16px}
+.metrics article{background:var(--surface)}
+.metrics strong{color:var(--green)}
+dialog::backdrop{background:#30233c70}
+.dialog-close{color:var(--green)}
+.schedule summary,.history-item,.history-item small{font-size:16px}
+.student-sheet .history-item,.student-sheet .history-item p{font-size:15px}
+.inline-grade-table{min-width:1020px}
+.inline-grade-table td:first-child{width:22%}
+.inline-grade-table td:nth-child(2){width:15%}
+.inline-grade-table td:nth-child(3){width:17%}
+.inline-grade-table td:nth-child(4){width:31%}
+.inline-grade-table td:last-child{width:15%}
+.inline-grade-table details,.inline-grade-table summary,.inline-assessment summary,.inline-grade-table .same-teacher{font-size:16px}
+.inline-grade-table .reconfirm{font-size:15px}
+#editor-progress,.inline-totals{background:var(--tint);font-size:16px}
+.inline-totals small,.student-save-bar>span,.student-save-bar .text-button{font-size:16px}
+.inline-totals .final-total{color:var(--green)}
+.lecture-summary{background:#f3eff7;border-color:var(--line)}
+.lecture-summary h3{font-size:20px}
+.lecture-summary p{font-size:16px}
+.secondary .quick-count{background:var(--tint)}
+.pairing-reasons{margin-top:12px;min-width:0}
+.pairing-reasons legend{font-size:16px;margin-bottom:8px;color:var(--ink)}
+.reason-options{display:flex;flex-wrap:wrap;gap:8px}
+.reason-options label{display:flex;flex-direction:row;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:16px;font-weight:400;min-height:44px;cursor:pointer;background:var(--surface)}
+.inline-grade-table .reason-options input{width:17px;height:17px;margin:0;flex-shrink:0;accent-color:var(--green)}
+.reason-options label:has(input:checked){background:var(--green);color:#fff;border-color:var(--green)}
+.other-reason{margin-top:12px;font-size:16px}
+.inline-grade-table .other-reason textarea{margin-top:0;min-height:85px}
+.pairing-reasons .clear-reason{font-size:15px;padding:6px 0}
+@media(max-width:1000px){#admin-view{grid-template-columns:190px minmax(0,1fr)}.workspace{padding:24px}.sidebar nav button{padding:12px 10px}.student-save-bar .text-button{font-size:16px}}
+@media(max-width:720px){#admin-view{display:block}.workspace{padding:22px 16px}.brand{font-size:18px}.sidebar nav button{font-size:16px}.quick-filters .primary,.quick-filters .secondary{font-size:16px}.student-navigation>span{font-size:16px}#editor-progress{font-size:15px}.hero-stamp{display:none}.section-title>span{font-size:15px}.top{height:auto;min-height:76px;padding-top:12px;padding-bottom:12px}.student-sheet-head h2{font-size:26px}}

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check web/portal.js && node --check web/quiz/app.js && node --check server/portal.mjs && node --check web/osce-ui.mjs && node --check web/score-rules.mjs && node --check web/student-editor.mjs",
+    "check": "node --check web/portal.js && node --check web/quiz/app.js && node --check server/portal.mjs && node --check web/osce-ui.mjs && node --check web/score-rules.mjs && node --check web/student-editor.mjs && node --check web/lecture-rules.mjs && node --check web/overview-rules.mjs",
     "start": "node scripts/preview.mjs"
   },
   "engines": {

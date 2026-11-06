@@ -77,4 +77,14 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 
 新增資料表為 clerk_reminder_reviews 與 clerk_reminder_review_history，SQL 定義保存在 database/reminder-reviews.sql，已套用雲端 migration clerk_reminder_reviews。兩表啟用 RLS 並撤銷 public、anon、authenticated 存取；只有後端 service_role 可讀寫。save_clerk_reminder_review 為 security invoker，版本檢查、每項目交易鎖和附加歷程在同一交易內完成。前端只能提供勾選與預期版本，核對者由驗證後的助教身分決定，時間由資料庫決定。測試 tests/reminder-storage.sql 使用合成資料並在最後 rollback。
 
-本階段沒有郵件內容、收件人名冊、寄信動作、寄信佇列或定時排程；所有回應明確標示 mailEnabled=false。未來啟用寄信須另行加入使用者提供的範本、學校信箱授權、老師信箱核對及每次寄送前的確認與去重流程。部署 surgery-clerkship-portal Edge Function 時需包含 web/reminder-rules.mjs。
+提醒核對初版沒有郵件內容、寄信動作、寄信佇列或定時排程；所有回應明確標示 mailEnabled=false。未來啟用寄信須另行加入使用者提供的範本、學校信箱授權、老師信箱核對及每次寄送前的確認與去重流程。部署 surgery-clerkship-portal Edge Function 時需包含 web/reminder-rules.mjs。
+
+## 老師 Email 通訊錄與合併提醒預覽（不寄信）
+
+老師 Email 通訊錄從已納入外科的原選老師與院內實際配對帶出姓名及科別，直接填寫單一信箱和選填院內編號／識別註記，逐筆儲存。通訊錄獨立保存，不變更配對、分數、護照或原核對紀錄。草稿在切換頁籤與篩選時保留，離開頁面、重新載入或登出前提醒。
+
+老師身分以通訊錄 UUID 區隔，以正規化的姓名＋科別明確連結。相同老師跨科別可選擇共用已存通訊錄；同名不同人可另建。不得僅依相同 Email 自動合併。現有來源未提供可靠的老師 ID，因此同科同名仍須人工辨識，不能當成院內身分自動驗證。更換院內老師後使用新配對查找通訊錄。
+
+合併提醒預覽重新取得來源資料，僅納入已到提醒日且仍在七天核對有效期內的項目。以通訊錄身分分組，每位老師一封；相同學生合併一列，保留每段實習科別、Course、期間與梯次。未連結通訊錄和缺信箱明確列示。預覽顯示資料時間，更新按鈕取得最新狀態。沒有信件本文、寄信按鈕、寄信佇列或郵件排程，mailEnabled 維持 false。
+
+資料表 clerk_teacher_contacts、clerk_teacher_bindings、clerk_teacher_contact_history 與 save_clerk_teacher_contact 由 database/teacher-contacts.sql 建立；RLS、角色權限、版本檢查、交易鎖及附加歷程與既有後端一致。SQL 回滾測試在 tests/contact-storage.sql。部署 Edge Function 時一併包含 web/contact-rules.mjs。

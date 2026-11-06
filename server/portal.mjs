@@ -1,6 +1,7 @@
 import {createHandler as quizHandler,sha256} from './quiz-application.mjs';
 import {studentCohorts,validScore} from '../web/score-rules.mjs';
 import {reminderEligible,reminderSourceVersion,reminderItems,reminderReview} from '../web/reminder-rules.mjs';
+import {teacherDirectory,validTeacherEmail,groupedReminders} from '../web/contact-rules.mjs';
 export const SOURCE='https://surgery-clerkship-selection.d90019.chatgpt.site';
 const ADMIN_ACTIONS=new Set(['admin-list','admin-toggle','admin-schedule','admin-survey','admin-roster','admin-roster-add','admin-open-now','admin-preview','admin-bank']);
 export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io'],now=Date.now}){
@@ -37,6 +38,27 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
       if(source.status===403||source.status===401)return reply({error:'原選科系統登入已失效，請重新登入。'},401);
       if(!source.ok)return reply({error:'暫時無法取得完整選科資料，請稍後再試。'},503);
       const grades=await source.json();if(!Array.isArray(grades.rows))return reply({error:'選科資料不完整，已停止操作。'},503);
+      if(['teacher-directory','teacher-contact-save','teacher-contact-history','reminder-groups'].includes(body.action)){
+        const [contacts,bindings]=await Promise.all([repository.teacherContacts(),repository.teacherBindings()]);
+        if(body.action==='reminder-groups')return reply(groupedReminders(grades.rows,await repository.reminderReviews(),contacts,bindings,now()));
+        const entries=teacherDirectory(grades.rows,contacts,bindings);
+        if(body.action==='teacher-directory')return reply({entries,contacts,bindings,mailEnabled:false});
+        if(body.action==='teacher-contact-history'){
+          if(!contacts.some(c=>c.id===body.id))return reply({error:'找不到這位老師的通訊錄。'},404);
+          return reply({history:await repository.teacherContactHistory(body.id)});
+        }
+        const entry=entries.find(e=>e.key===body.key);
+        if(!entry)return reply({error:'老師或科別資料已變更，請更新通訊錄後重試。'},404);
+        if(typeof body.email!=='string'||typeof body.hospitalCode!=='string'||typeof body.revision!=='string'||body.revision.length>40||typeof body.bindingRevision!=='string'||body.bindingRevision.length>40||(body.contactId!==null&&typeof body.contactId!=='string'))return reply({error:'通訊錄資料不完整，請重新載入後再試。'},400);
+        const email=body.email.trim(),code=body.hospitalCode.trim();
+        if(email&&!validTeacherEmail(email))return reply({error:'請填寫單一有效 Email，不可包含多個收件人。'},400);
+        if(code.length>40||/[\p{Cc}\p{Cf}]/u.test(code))return reply({error:'院內編號／識別註記請填 40 字以內。'},400);
+        if(body.contactId!==null&&!contacts.some(c=>c.id===body.contactId&&c.name===entry.name))return reply({error:'請選擇同名老師的通訊錄；不同老師請分開建立。'},400);
+        const result=await repository.saveTeacherContact({p_key:entry.key,p_name:entry.name,p_unit:entry.unit,p_contact_id:body.contactId,p_email:email,p_code:code,p_revision:body.revision,p_binding_revision:body.bindingRevision,p_actor:session.employeeId});
+        if(result.conflict)return reply({error:'通訊錄已被其他視窗更新。請保留輸入，更新資料後重新核對。'},409);
+        if(result.invalid)return reply({error:'選取的老師資料已變更，請重新載入。'},409);
+        return reply({...result,mailEnabled:false});
+      }
       if(body.action==='reminder-list'){
         const records=await repository.reminderReviews(),time=now();
         return reply({items:reminderItems(grades.rows,records,time),asOf:new Date(time).toISOString(),mailEnabled:false});

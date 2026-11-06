@@ -104,3 +104,5 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 資料表 clerk_reminder_batches、clerk_reminder_batch_history、clerk_reminder_deliveries 全部啟用 RLS 並限制為後端存取。寄送結果表目前只有讀取權限，沒有寫入端點、郵件服務、草稿或排程；確認紀錄不會被當作已寄出。未來實際寄信須另行實作保留寄送嘗試、檢查寄件帳號、每封最新資料檢查、處理部分成功與結果不明、保存服務提供者郵件識別碼的流程；不可直接將確認狀態當成已寄出。
 
 後端部署需加入 server/reminder-batches.mjs 與 web/reminder-letter.mjs。SQL 見 database/reminder-batches.sql；合成資料回滾測試見 tests/batch-storage.sql。前端新增 web/batch-ui.mjs。寄送紀錄提供完整批次內容與操作者／時間；歷史含學生與老師私人資料，不可匯出或提交到公開 GitHub。
+
+「待提醒名單」支援「全選確認仍未評分」，只處理目前搜尋及核對進度篩選顯示的待核對項目。已在七天有效期內的確認不重複更新。按下後沿用逐筆核對端點依序保存，每筆皆重新驗證配對、評分與版本；畫面顯示進度並鎖定操作。任何一筆錯誤或結果不明即停止，保留前面成功紀錄並顯示尚未處理數量，不自動重試；登入失效後停止。此操作不建立信件、不寄信。

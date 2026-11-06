@@ -5,6 +5,10 @@ const url=Deno.env.get('SUPABASE_URL')!,key=Deno.env.get('SUPABASE_SERVICE_ROLE_
 async function all(path:string){const result=[];for(let offset=0;offset<100000;offset+=1000){const r=await fetch(url+'/rest/v1/'+path+'&limit=1000&offset='+offset,{headers:{apikey:key,Authorization:'Bearer '+key},signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Data unavailable');const rows=await r.json();result.push(...rows);if(rows.length<1000)return result;}throw new Error('Too many rows');}
 const repository={
   quiz:supabaseRepository(url,key),
+  reminderBatches:()=>all('clerk_reminder_batches?select=*&order=created_at.desc,id.asc'),
+  reminderDeliveries:()=>all('clerk_reminder_deliveries?select=*&order=created_at.desc,id.asc'),
+  reminderBatchHistory:(id:string)=>all('clerk_reminder_batch_history?select=*&batch_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc,id.asc'),
+  saveReminderBatch:async(data:Record<string,unknown>)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_reminder_batch',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Batch save unavailable');return await r.json();},
   catalog:()=>all('core_quiz_exams?select=id,title,open,opens_at,closes_at&order=opens_at.desc.nullslast,id.asc'),
   submissions:()=>all('core_quiz_submissions?select=exam_id,student_id,name,score,submitted_at,survey_complete&order=exam_id.asc,student_id.asc'),
   rosters:()=>all('core_quiz_roster?select=exam_id,student_id&order=exam_id.asc,student_id.asc'),

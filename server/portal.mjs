@@ -1,3 +1,4 @@
+import {handleBatch} from './reminder-batches.mjs';
 import {createHandler as quizHandler,sha256} from './quiz-application.mjs';
 import {studentCohorts,validScore} from '../web/score-rules.mjs';
 import {reminderEligible,reminderSourceVersion,reminderItems,reminderReview} from '../web/reminder-rules.mjs';
@@ -38,6 +39,7 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
       if(source.status===403||source.status===401)return reply({error:'原選科系統登入已失效，請重新登入。'},401);
       if(!source.ok)return reply({error:'暫時無法取得完整選科資料，請稍後再試。'},503);
       const grades=await source.json();if(!Array.isArray(grades.rows))return reply({error:'選科資料不完整，已停止操作。'},503);
+      if(['reminder-batches','reminder-batch-create','reminder-batch-confirm','reminder-batch-cancel','reminder-batch-history'].includes(body.action)){const result=await handleBatch({body,rows:grades.rows,repository,actor:session.employeeId,now:now()});return reply(result.body,result.status);}
       if(['teacher-directory','teacher-contact-save','teacher-contact-history','reminder-groups'].includes(body.action)){
         const [contacts,bindings]=await Promise.all([repository.teacherContacts(),repository.teacherBindings()]);
         if(body.action==='reminder-groups')return reply(groupedReminders(grades.rows,await repository.reminderReviews(),contacts,bindings,now()));

@@ -90,3 +90,7 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 資料表 clerk_teacher_contacts、clerk_teacher_bindings、clerk_teacher_contact_history 與 save_clerk_teacher_contact 由 database/teacher-contacts.sql 建立；RLS、角色權限、版本檢查、交易鎖及附加歷程與既有後端一致。SQL 回滾測試在 tests/contact-storage.sql。部署 Edge Function 時一併包含 web/contact-rules.mjs。
 
 每位老師可保存 Email 1 與 Email 2；未來同一封合併提醒同時寄到這兩個信箱。第二個信箱可留白，填寫時必須有第一個信箱且兩者不同；伺服器驗證每欄為單一地址，拒絕多收件人字串與換行。預覽依通訊錄 UUID 分組，recipients 陣列包含兩個地址並去重，仍無寄信功能。舊前端未送 secondaryEmail 時保留既存第二個信箱；明確送空字串才清除。新增欄位與交易函式見 database/teacher-contact-emails.sql，雙信箱、舊介面保留及歷程測試見 tests/contact-emails-storage.sql。正式匯入資料與個人信箱不可提交到 GitHub。
+
+## 評分提醒信範本
+
+2026-11-06 使用者確認的信件主旨、內文與署名收於 web/reminder-letter.mjs。「合併提醒預覽」依最新有效核對分組，自動帶入老師姓名及每段實習的學號、姓名、科別、起迄日，兩個 Email 同列收件人。即使目前沒有已確認項目，仍可展開固定範本。渲染動態值皆轉義，不寫入原配對或核對紀錄；沒有寄信、草稿建立或排程功能。

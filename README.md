@@ -81,10 +81,12 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 
 ## 老師 Email 通訊錄與合併提醒預覽（不寄信）
 
-老師 Email 通訊錄從已納入外科的原選老師與院內實際配對帶出姓名及科別，直接填寫單一信箱和選填院內編號／識別註記，逐筆儲存。通訊錄獨立保存，不變更配對、分數、護照或原核對紀錄。草稿在切換頁籤與篩選時保留，離開頁面、重新載入或登出前提醒。
+老師 Email 通訊錄從已納入外科的原選老師與院內實際配對帶出姓名及科別，直接填寫第一個信箱、選填第二個信箱與院內編號／識別註記，逐筆儲存。通訊錄獨立保存，不變更配對、分數、護照或原核對紀錄。草稿在切換頁籤與篩選時保留，離開頁面、重新載入或登出前提醒。
 
 老師身分以通訊錄 UUID 區隔，以正規化的姓名＋科別明確連結。相同老師跨科別可選擇共用已存通訊錄；同名不同人可另建。不得僅依相同 Email 自動合併。現有來源未提供可靠的老師 ID，因此同科同名仍須人工辨識，不能當成院內身分自動驗證。更換院內老師後使用新配對查找通訊錄。
 
 合併提醒預覽重新取得來源資料，僅納入已到提醒日且仍在七天核對有效期內的項目。以通訊錄身分分組，每位老師一封；相同學生合併一列，保留每段實習科別、Course、期間與梯次。未連結通訊錄和缺信箱明確列示。預覽顯示資料時間，更新按鈕取得最新狀態。沒有信件本文、寄信按鈕、寄信佇列或郵件排程，mailEnabled 維持 false。
 
 資料表 clerk_teacher_contacts、clerk_teacher_bindings、clerk_teacher_contact_history 與 save_clerk_teacher_contact 由 database/teacher-contacts.sql 建立；RLS、角色權限、版本檢查、交易鎖及附加歷程與既有後端一致。SQL 回滾測試在 tests/contact-storage.sql。部署 Edge Function 時一併包含 web/contact-rules.mjs。
+
+每位老師可保存 Email 1 與 Email 2；未來同一封合併提醒同時寄到這兩個信箱。第二個信箱可留白，填寫時必須有第一個信箱且兩者不同；伺服器驗證每欄為單一地址，拒絕多收件人字串與換行。預覽依通訊錄 UUID 分組，recipients 陣列包含兩個地址並去重，仍無寄信功能。舊前端未送 secondaryEmail 時保留既存第二個信箱；明確送空字串才清除。新增欄位與交易函式見 database/teacher-contact-emails.sql，雙信箱、舊介面保留及歷程測試見 tests/contact-emails-storage.sql。正式匯入資料與個人信箱不可提交到 GitHub。

@@ -12,7 +12,7 @@ const repository={
   teacherContacts:()=>all('clerk_teacher_contacts?select=*&order=id.asc'),
   teacherBindings:()=>all('clerk_teacher_bindings?select=*&order=teacher_key.asc'),
   teacherContactHistory:(id:string)=>all('clerk_teacher_contact_history?select=*&contact_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
-  saveTeacherContact:async(data:Record<string,unknown>)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_teacher_contact',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Contact save unavailable');return await r.json();},
+  saveTeacherContact:async(data:Record<string,unknown>)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_teacher_contact_emails',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Contact save unavailable');return await r.json();},
   reminderReviews:()=>all('clerk_reminder_reviews?select=*&order=row_id.asc'),
   reminderHistory:(id:string)=>all('clerk_reminder_review_history?select=*&row_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
   saveReminderReview:async(data:Record<string,unknown>)=>{const r=await fetch(url+'/rest/v1/rpc/save_clerk_reminder_review',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Review save unavailable');return await r.json();},

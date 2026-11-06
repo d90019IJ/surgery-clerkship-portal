@@ -50,11 +50,15 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
         const entry=entries.find(e=>e.key===body.key);
         if(!entry)return reply({error:'老師或科別資料已變更，請更新通訊錄後重試。'},404);
         if(typeof body.email!=='string'||typeof body.hospitalCode!=='string'||typeof body.revision!=='string'||body.revision.length>40||typeof body.bindingRevision!=='string'||body.bindingRevision.length>40||(body.contactId!==null&&typeof body.contactId!=='string'))return reply({error:'通訊錄資料不完整，請重新載入後再試。'},400);
-        const email=body.email.trim(),code=body.hospitalCode.trim();
+        if(body.secondaryEmail!==undefined&&typeof body.secondaryEmail!=='string')return reply({error:'第二個 Email 格式不正確。'},400);
+        const existingContact=contacts.find(c=>c.id===body.contactId);
+        // Old clients omit this field; preserve the saved second address in that case.
+        const email=body.email.trim(),email2=body.secondaryEmail===undefined?(existingContact?.secondary_email??''):body.secondaryEmail.trim(),code=body.hospitalCode.trim();
+        if(email2&&(!validTeacherEmail(email2)||!email||email.toLowerCase()===email2.toLowerCase()))return reply({error:'請先填第一個 Email；第二個須是不同的有效信箱。'},400);
         if(email&&!validTeacherEmail(email))return reply({error:'請填寫單一有效 Email，不可包含多個收件人。'},400);
         if(code.length>40||/[\p{Cc}\p{Cf}]/u.test(code))return reply({error:'院內編號／識別註記請填 40 字以內。'},400);
         if(body.contactId!==null&&!contacts.some(c=>c.id===body.contactId&&c.name===entry.name))return reply({error:'請選擇同名老師的通訊錄；不同老師請分開建立。'},400);
-        const result=await repository.saveTeacherContact({p_key:entry.key,p_name:entry.name,p_unit:entry.unit,p_contact_id:body.contactId,p_email:email,p_code:code,p_revision:body.revision,p_binding_revision:body.bindingRevision,p_actor:session.employeeId});
+        const result=await repository.saveTeacherContact({p_key:entry.key,p_name:entry.name,p_unit:entry.unit,p_contact_id:body.contactId,p_email:email,p_email2:email2,p_code:code,p_revision:body.revision,p_binding_revision:body.bindingRevision,p_actor:session.employeeId});
         if(result.conflict)return reply({error:'通訊錄已被其他視窗更新。請保留輸入，更新資料後重新核對。'},409);
         if(result.invalid)return reply({error:'選取的老師資料已變更，請重新載入。'},409);
         return reply({...result,mailEnabled:false});

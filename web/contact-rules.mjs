@@ -8,6 +8,11 @@ export function validTeacherEmail(email){
   const [local,domain]=parts;if(!local||local.length>64||! /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)||local.startsWith('.')||local.endsWith('.')||local.includes('..'))return false;
   const labels=domain.split('.');return labels.length>=2&&labels.every(s=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(s))&&/^[a-z]{2,63}$/i.test(labels.at(-1));
 }
+export function teacherRecipients(contact){
+  const addresses=[contact?.email,contact?.secondary_email].filter(Boolean);
+  if(!validTeacherEmail(contact?.email)||addresses.some(e=>!validTeacherEmail(e)))return [];
+  return addresses.filter((e,i)=>addresses.findIndex(a=>a.toLowerCase()===e.toLowerCase())===i);
+}
 export function teacherDirectory(rows,contacts,bindings){
   const entries=new Map(),byContact=new Map(contacts.map(c=>[c.id,c])),byKey=new Map(bindings.map(b=>[b.teacher_key,b]));
   for(const r of rows){
@@ -33,5 +38,5 @@ export function groupedReminders(rows,reviews,contacts,bindings,now=Date.now()){
     if(!group.students.has(r.studentId))group.students.set(r.studentId,{studentId:r.studentId,name:r.name,placements:[]});
     group.students.get(r.studentId).placements.push({id:r.id,unit:r.unit,course:r.course,start:r.start,end:r.end,batch:r.batch});
   }
-  return {groups:[...groups.values()].map(g=>({...g,students:[...g.students.values()],emailValid:validTeacherEmail(g.contact.email)})).sort((a,b)=>a.contact.name.localeCompare(b.contact.name,'zh-Hant')),unlinked,confirmedCount:seen.size,pendingCount:all.length-active.length,asOf:new Date(now).toISOString(),mailEnabled:false};
+  return {groups:[...groups.values()].map(g=>({...g,students:[...g.students.values()],recipients:teacherRecipients(g.contact),emailValid:teacherRecipients(g.contact).length>0})).sort((a,b)=>a.contact.name.localeCompare(b.contact.name,'zh-Hant')),unlinked,confirmedCount:seen.size,pendingCount:all.length-active.length,asOf:new Date(now).toISOString(),mailEnabled:false};
 }

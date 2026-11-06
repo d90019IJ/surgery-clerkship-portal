@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {teacherDirectory,teacherKey,validTeacherEmail,groupedReminders} from '../web/contact-rules.mjs';
+import {teacherDirectory,teacherKey,validTeacherEmail,groupedReminders,teacherRecipients} from '../web/contact-rules.mjs';
 import {reminderSourceVersion,REVIEW_VALID_MS} from '../web/reminder-rules.mjs';
 import {createPortal} from '../server/portal.mjs';
 const now=Date.parse('2026-11-06T04:00:00Z');
@@ -12,3 +12,22 @@ test('explicit contact identity combines students and placements; identical emai
 test('zero, changed teacher, revoked review are excluded; missing email remains visibly incomplete',()=>{const r=row(),contacts=[{id:'c',name:'老師甲',email:''}],bindings=[{teacher_key:teacherKey('老師甲',r.unit),contact_id:'c'}];assert.equal(groupedReminders([r],[review(r)],contacts,bindings,now).groups[0].emailValid,false);for(const changed of [{...r,record:{...r.record,score:0}},{...r,record:{...r.record,actual_teacher:'老師乙'}}])assert.equal(groupedReminders([changed],[review(r)],contacts,bindings,now).confirmedCount,0);assert.equal(groupedReminders([r],[{...review(r),confirmed:false}],contacts,bindings,now).confirmedCount,0);});
 test('directory endpoints authenticate, constrain inputs and contacts, preserve grades and reject stale writes',async()=>{const r=row(),before=structuredClone(r),writes=[];let conflict=false,denied=false;const handler=createPortal({codec:{read:async t=>t==='staff'?{cookie:'test',employeeId:'STAFF'}:null},fetchSource:async()=>Response.json({rows:[r]},{status:denied?403:200}),now:()=>now,repository:{teacherContacts:async()=>[{id:'other',name:'老師乙'}],teacherBindings:async()=>[],reminderReviews:async()=>[],saveTeacherContact:async p=>{writes.push(p);return conflict?{conflict:true}:{contact:{id:'c',name:p.p_name,email:p.p_email},binding:{}};}}});const send=async(b,token='staff')=>{const result=await handler(new Request('https://test.local',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(b)}));return {status:result.status,body:await result.json()};};const payload={action:'teacher-contact-save',key:teacherKey('老師甲','一般外科'),contactId:null,email:' teacher@example.com ',hospitalCode:'123',revision:'',bindingRevision:'',actor:'forged'};for(const action of ['teacher-directory','teacher-contact-save','reminder-groups','teacher-contact-history'])assert.equal((await send({...payload,action},'')).status,401);assert.equal((await send({...payload,email:'a@b.com,b@c.com'})).status,400);assert.equal((await send({...payload,key:'fake'})).status,404);assert.equal((await send({...payload,contactId:'other'})).status,400);let d=await send(payload);assert.equal(d.status,200);assert.equal(d.body.mailEnabled,false);assert.equal(writes[0].p_actor,'STAFF');assert.equal(writes[0].p_email,'teacher@example.com');assert.deepEqual(r,before);conflict=true;assert.equal((await send(payload)).status,409);assert.equal((await send({action:'reminder-send'})).status,400);denied=true;assert.equal((await send(payload)).status,401);});
 
+
+test('two recipients stay in one teacher group and duplicate addresses are suppressed',()=>{
+ const r=row(),contact={id:'c',name:'老師甲',email:'one@example.com',secondary_email:'two@example.com'},binding={teacher_key:teacherKey('老師甲',r.unit),contact_id:'c'};
+ const d=groupedReminders([r],[review(r)],[contact],[binding],now);
+ assert.equal(d.groups.length,1);assert.deepEqual(d.groups[0].recipients,['one@example.com','two@example.com']);
+ assert.deepEqual(teacherRecipients({...contact,secondary_email:'ONE@example.com'}),['one@example.com']);
+ assert.deepEqual(teacherRecipients({...contact,secondary_email:'bad'}),[]);
+});
+test('legacy save preserves second email; explicit replacement/clear validates both recipients',async()=>{
+ const r=row(),contact={id:'c',name:'老師甲',email:'one@example.com',secondary_email:'two@example.com'},writes=[];
+ const handler=createPortal({codec:{read:async()=>({employeeId:'STAFF',cookie:'test'})},fetchSource:async()=>Response.json({rows:[r]}),repository:{teacherContacts:async()=>[contact],teacherBindings:async()=>[],saveTeacherContact:async p=>{writes.push(p);return {contact,binding:{}};}}});
+ const payload={action:'teacher-contact-save',key:teacherKey('老師甲',r.unit),contactId:'c',email:contact.email,hospitalCode:'',revision:'v',bindingRevision:''};
+ const send=async body=>handler(new Request('https://test.local',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));
+ assert.equal((await send(payload)).status,200);assert.equal(writes.at(-1).p_email2,'two@example.com');
+ assert.equal((await send({...payload,secondaryEmail:'new@example.com'})).status,200);assert.equal(writes.at(-1).p_email2,'new@example.com');
+ assert.equal((await send({...payload,secondaryEmail:''})).status,200);assert.equal(writes.at(-1).p_email2,'');
+ for(const secondaryEmail of [null,4,'bad','ONE@example.com','a@b.com,b@c.com'])assert.equal((await send({...payload,secondaryEmail})).status,400);
+ assert.equal((await send({...payload,email:'',secondaryEmail:'two@example.com'})).status,400);
+});

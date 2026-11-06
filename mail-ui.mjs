@@ -76,5 +76,6 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
     }catch(e){if(generation===epoch)message(`本次已確認寄出 ${sent} 封。${e.message} 請查看最新寄送紀錄；系統不會自動重試。`);}
     finally{if(generation===epoch){lock(false);await onChanged();}}
   }
+  window.addEventListener('beforeunload',e=>{if(busy)e.preventDefault();});
   return {load,mount,invalidate,isBusy:()=>busy,reset:()=>{epoch++;lock(false);config=null;accessToken='';expiresAt=0;email='';intent=null;context=null;client=null;notice='';sdkReady=false;}};
 }

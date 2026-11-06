@@ -1,11 +1,12 @@
 import {handleBatch} from './reminder-batches.mjs';
+import {handleMail} from './reminder-mail.mjs';
 import {createHandler as quizHandler,sha256} from './quiz-application.mjs';
 import {studentCohorts,validScore} from '../web/score-rules.mjs';
 import {reminderEligible,reminderSourceVersion,reminderItems,reminderReview} from '../web/reminder-rules.mjs';
 import {teacherDirectory,validTeacherEmail,groupedReminders} from '../web/contact-rules.mjs';
 export const SOURCE='https://surgery-clerkship-selection.d90019.chatgpt.site';
 const ADMIN_ACTIONS=new Set(['admin-list','admin-toggle','admin-schedule','admin-survey','admin-roster','admin-roster-add','admin-open-now','admin-preview','admin-bank']);
-export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io'],now=Date.now}){
+export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=['https://d90019ij.github.io'],now=Date.now,mailClientId='',mailProvider=null}){
   return async request=>{
     const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
     const reply=(body,status=200)=>Response.json(body,{status,headers});
@@ -39,6 +40,7 @@ export function createPortal({codec,repository,fetchSource=fetch,allowedOrigins=
       if(source.status===403||source.status===401)return reply({error:'原選科系統登入已失效，請重新登入。'},401);
       if(!source.ok)return reply({error:'暫時無法取得完整選科資料，請稍後再試。'},503);
       const grades=await source.json();if(!Array.isArray(grades.rows))return reply({error:'選科資料不完整，已停止操作。'},503);
+      if(['mail-config','mail-connect','mail-prepare','mail-send'].includes(body.action)){const result=await handleMail({body,rows:grades.rows,repository,actor:session.employeeId,now:now(),clientId:mailClientId,provider:mailProvider});return reply(result.body,result.status);}
       if(['reminder-batches','reminder-batch-create','reminder-batch-confirm','reminder-batch-cancel','reminder-batch-history'].includes(body.action)){const result=await handleBatch({body,rows:grades.rows,repository,actor:session.employeeId,now:now()});return reply(result.body,result.status);}
       if(['teacher-directory','teacher-contact-save','teacher-contact-history','reminder-groups'].includes(body.action)){
         const [contacts,bindings]=await Promise.all([repository.teacherContacts(),repository.teacherBindings()]);

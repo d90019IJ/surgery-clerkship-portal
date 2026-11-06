@@ -1,9 +1,13 @@
 import {createPortal} from './portal.mjs';
 import {sessionCodec} from './session.mjs';
 import {supabaseRepository} from './quiz-supabase-repository.mjs';
+import {GOOGLE_CLIENT_ID} from './mail-config.mjs';
+import {gmailProvider} from './gmail.mjs';
 const url=Deno.env.get('SUPABASE_URL')!,key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 async function all(path:string){const result=[];for(let offset=0;offset<100000;offset+=1000){const r=await fetch(url+'/rest/v1/'+path+'&limit=1000&offset='+offset,{headers:{apikey:key,Authorization:'Bearer '+key},signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Data unavailable');const rows=await r.json();result.push(...rows);if(rows.length<1000)return result;}throw new Error('Too many rows');}
 const repository={
+  mailRpc:async(name:string,data:Record<string,unknown>)=>{if(!['prepare_clerk_mail','claim_clerk_mail','finish_clerk_mail'].includes(name))throw new Error('Invalid mail action');const r=await fetch(url+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error('Mail record unavailable');return await r.json();},
+  mailHistory:(id:string)=>all('clerk_mail_delivery_events?select=*&batch_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc,id.asc'),
   quiz:supabaseRepository(url,key),
   reminderBatches:()=>all('clerk_reminder_batches?select=*&order=created_at.desc,id.asc'),
   reminderDeliveries:()=>all('clerk_reminder_deliveries?select=*&order=created_at.desc,id.asc'),
@@ -23,4 +27,4 @@ const repository={
   osceHistory:(id:string)=>all('clerk_osce_history?select=*&record_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc,id.asc'),
   saveOsce:async(data:Record<string,unknown>)=>{const rpc='p_passport_completion' in data?'save_clerk_assessment':'save_clerk_osce';const r=await fetch(url+'/rest/v1/rpc/'+rpc,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Save unavailable');return await r.json();}
 };
-Deno.serve(createPortal({codec:await sessionCodec(key),repository}));
+Deno.serve(createPortal({codec:await sessionCodec(key),repository,mailClientId:GOOGLE_CLIENT_ID,mailProvider:gmailProvider({clientId:GOOGLE_CLIENT_ID})}));

@@ -11,7 +11,7 @@ begin
   end loop;
   if has_function_privilege(r,'public.save_clerk_reminder_batch(text,uuid,uuid,jsonb,jsonb,text)','EXECUTE') then raise exception 'Unexpected RPC access'; end if;
  end loop;
- if has_table_privilege('service_role','public.clerk_reminder_deliveries','INSERT') or has_table_privilege('service_role','public.clerk_reminder_batch_history','UPDATE') then raise exception 'Unexpected delivery/audit write permission'; end if;
+ if has_table_privilege('service_role','public.clerk_reminder_batch_history','UPDATE') then raise exception 'Unexpected delivery/audit write permission'; end if;
 end $$;
 set local role service_role;
 do $$

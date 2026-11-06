@@ -49,7 +49,7 @@ export async function handleBatch({body,rows,repository,actor,now}){
     return result.error?fail(result.error):ok(result);
   }
   const batch=batches.find(b=>b.id===body.id);if(!batch)return fail('找不到此批次。',404);
-  if(body.action==='reminder-batch-history')return ok({history:await repository.reminderBatchHistory(batch.id)});
+  if(body.action==='reminder-batch-history')return ok({history:await repository.reminderBatchHistory(batch.id),mailHistory:repository.mailHistory?await repository.mailHistory(batch.id):[]});
   if(!uuid(body.revision)||body.revision!==batch.revision)return fail('此批次已更新，請重新載入後核對。');
   if(batch.cancelled_at)return fail('此批次已取消，請建立新批次。');
   if(deliveries.some(d=>d.batch_id===batch.id))return fail('此批次已有寄送處理紀錄，不能變更確認內容。');

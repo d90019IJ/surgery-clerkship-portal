@@ -77,7 +77,7 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 
 新增資料表為 clerk_reminder_reviews 與 clerk_reminder_review_history，SQL 定義保存在 database/reminder-reviews.sql，已套用雲端 migration clerk_reminder_reviews。兩表啟用 RLS 並撤銷 public、anon、authenticated 存取；只有後端 service_role 可讀寫。save_clerk_reminder_review 為 security invoker，版本檢查、每項目交易鎖和附加歷程在同一交易內完成。前端只能提供勾選與預期版本，核對者由驗證後的助教身分決定，時間由資料庫決定。測試 tests/reminder-storage.sql 使用合成資料並在最後 rollback。
 
-提醒核對初版沒有郵件內容、寄信動作、寄信佇列或定時排程；所有回應明確標示 mailEnabled=false。未來啟用寄信須另行加入使用者提供的範本、學校信箱授權、老師信箱核對及每次寄送前的確認與去重流程。部署 surgery-clerkship-portal Edge Function 時需包含 web/reminder-rules.mjs。
+待提醒名單的勾選只保存核對，不觸發寄信。平台手動寄信見下方「學校信箱連結」。目前沒有寄信佇列或定時排程。部署 surgery-clerkship-portal Edge Function 時需包含 web/reminder-rules.mjs。
 
 ## 老師 Email 通訊錄與合併提醒預覽（不寄信）
 
@@ -97,12 +97,25 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 
 ## 本批寄送確認與寄送紀錄（2026-11-06）
 
-助教先在待提醒名單保存「確認仍未評分」，再到本批寄送確認選取老師建立批次。後端依最新來源、有效核對與老師通訊錄產生每位老師一封的固定信件快照，包含兩個收件信箱、主旨、學生明細、完整 HTML 與來源版本。逐封勾選後保存本批確認；此操作不授權或觸發寄信，須由使用者另在對話中明確指示。預定寄件信箱為使用者指定的學校信箱，實際寄送前仍須驗證登入帳號。
+助教先在待提醒名單保存「確認仍未評分」，再到本批寄送確認選取老師建立批次。後端依最新來源、有效核對與老師通訊錄產生每位老師一封的固定信件快照，包含兩個收件信箱、主旨、學生明細、完整 HTML 與來源版本。逐封勾選後保存本批確認；此操作不觸發寄信；使用者須在平台連結學校信箱、核對摘要並按最後的「確認寄出」。預定寄件信箱為使用者指定的學校信箱，實際寄送前仍須驗證登入帳號。
 
 批次快照不可改寫；取消仍保留原文和確認歷程。信箱、對應、配對、分數、姓名、核對版本或七天有效期改變時，顯示需重新核對，不能再次確認過時內容。建立與確認前重新讀取原系統，資料庫另驗證本地版本並以交易鎖、唯一 request_id、批次 revision 防止重複與覆蓋。原成績、護照與通訊錄不會被批次功能修改。
 
-資料表 clerk_reminder_batches、clerk_reminder_batch_history、clerk_reminder_deliveries 全部啟用 RLS 並限制為後端存取。寄送結果表目前只有讀取權限，沒有寫入端點、郵件服務、草稿或排程；確認紀錄不會被當作已寄出。未來實際寄信須另行實作保留寄送嘗試、檢查寄件帳號、每封最新資料檢查、處理部分成功與結果不明、保存服務提供者郵件識別碼的流程；不可直接將確認狀態當成已寄出。
+資料表 clerk_reminder_batches、clerk_reminder_batch_history、clerk_reminder_deliveries 全部啟用 RLS 並限制為後端存取。寄送結果僅由後端手動寄信流程寫入；確認紀錄不會被當作已寄出。每封寄送前重新驗證來源、聯絡人、核對狀態與批次版本，先保留處理紀錄，再呼叫 Gmail。沒有草稿、排程或自動重試。
 
 後端部署需加入 server/reminder-batches.mjs 與 web/reminder-letter.mjs。SQL 見 database/reminder-batches.sql；合成資料回滾測試見 tests/batch-storage.sql。前端新增 web/batch-ui.mjs。寄送紀錄提供完整批次內容與操作者／時間；歷史含學生與老師私人資料，不可匯出或提交到公開 GitHub。
 
 「待提醒名單」支援「全選確認仍未評分」，只處理目前搜尋及核對進度篩選顯示的待核對項目。已在七天有效期內的確認不重複更新。按下後沿用逐筆核對端點依序保存，每筆皆重新驗證配對、評分與版本；畫面顯示進度並鎖定操作。任何一筆錯誤或結果不明即停止，保留前面成功紀錄並顯示尚未處理數量，不自動重試；登入失效後停止。此操作不建立信件、不寄信。
+
+
+## 學校信箱連結與手動寄信（2026-11-06）
+
+新增 Google Identity Services token model，僅請求 gmail.send、openid、userinfo.email。前端 access token 只保留在記憶體，登出、重新整理後消失；資料庫、寄送紀錄與 GitHub 都不存 token、refresh token 或信箱密碼。後端驗證 token audience、有效期、gmail.send scope、Google 驗證過的 email 與 subject，只接受 d90019@nycu.edu.tw。
+
+Google 設定尚待學校帳號登入完成：在使用者擁有的 Google Cloud 專案啟用 Gmail API，設定 OAuth 同意畫面（僅學校帳號使用；若採 External Testing，僅加入指定學校信箱為測試使用者），建立 Web application OAuth client，Authorized JavaScript origin 為 https://d90019ij.github.io（不含路徑）。將公開的 client ID 填入 server/mail-config.mjs 並重新部署後端；不要填 client secret。空 client ID 時所有寄送端點關閉，頁面清楚提示尚待設定。實際登入與 Google 授權由使用者完成，不測試寄真實郵件。
+
+操作：確認仍未評分 → 建立批次 → 核對完整信件並保存本批確認 → 連結學校信箱 → 核對寄送摘要（不寄信） → 確認寄出。摘要有效十分鐘，綁定助教身分、Google 帳號、批次版本及老師集合；每封仍重新檢查最新來源。修改勾選會丟棄摘要，必須重新保存。每位老師的兩個地址放同一封信的 To。
+
+新增 database/reminder-mail.sql。clerk_mail_intents 不包含 Google token；clerk_mail_delivery_events 追加保存每次處理與結果。所有表啟用 RLS、禁止 anon/authenticated 存取。claim RPC 使用與批次建立相同的 transaction advisory lock 與 unique(batch_id,teacher_id)，阻擋並行、重複、未知結果的重寄。已寄出必須有 Gmail 郵件識別碼；這表示 Gmail 接受寄送，並非保證對方已收到。已明確拒絕的 failed 可在新的人工摘要確認後重試；sending/unknown 一律阻擋，需核對寄件備份後由維護人員查證，不可直接改成 failed 來強制重寄。紀錄另存 RFC Message-ID 供查證。
+
+後端部署增加 server/mail-config.mjs、server/gmail.mjs、server/reminder-mail.mjs。前端新增 web/mail-ui.mjs。tests/mail.test.mjs 使用假 Google HTTP 回應；tests/mail-storage.sql 在交易內使用合成資料並完整回滾，完全不呼叫 Gmail。既有 contacts、評分、核對與批次快照皆保留。

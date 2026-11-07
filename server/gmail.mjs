@@ -8,14 +8,23 @@ export function gmailProvider({clientId,fetchGoogle=fetch,now=Date.now}){
   return {
     async identity(token){
       if(typeof token!=='string'||token.length<10||token.length>8192||/\s/.test(token))throw new Error('請先連結學校信箱。');
-      let info,user;
+      let info,user,failure='無法連線至 Google 驗證授權，請稍後重新連結學校信箱。';
       try{
-        const r=await fetchGoogle('https://oauth2.googleapis.com/tokeninfo',{...options(token),method:'POST'});
+        // Match Google's auth library request format; never place the token in a URL.
+        const r=await fetchGoogle('https://oauth2.googleapis.com/tokeninfo',{...options(token),method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/x-www-form-urlencoded'}});
+        failure='Google 授權驗證未通過（'+r.status+'），請重新連結學校信箱。';
         if(!r.ok)throw new Error();info=await r.json();
-        if(info.aud!==clientId||!String(info.scope??'').split(' ').includes(GMAIL_SCOPE)||!(Number(info.expires_in)>60))throw new Error();
+        failure='信箱授權與本平台不符，請重新連結學校信箱。';
+        if(info.aud!==clientId)throw new Error();
+        failure='尚未允許寄信權限，請重新連結並允許「以您的名義傳送電子郵件」。';
+        if(!String(info.scope??'').split(' ').includes(GMAIL_SCOPE))throw new Error();
+        failure='信箱授權已到期，請重新連結學校信箱。';
+        if(!(Number(info.expires_in)>60))throw new Error();
+        failure='無法連線至 Google 確認帳號，請稍後重新連結學校信箱。';
         const u=await fetchGoogle('https://openidconnect.googleapis.com/v1/userinfo',options(token));
+        failure='Google 帳號驗證未通過（'+u.status+'），請重新連結學校信箱。';
         if(!u.ok)throw new Error();user=await u.json();
-      }catch{throw new Error('信箱授權已失效或尚未允許寄信，請重新連結學校信箱。');}
+      }catch{throw new Error(failure);}
       if(user.email!==SCHOOL_SENDER||user.email_verified!==true||!user.sub||info.sub&&info.sub!==user.sub)throw new Error('請使用 '+SCHOOL_SENDER+' 連結，其他帳號不能寄送。');
       return {email:user.email,sub:user.sub,expiresAt:now()+Number(info.expires_in)*1000};
     },

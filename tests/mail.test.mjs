@@ -9,10 +9,16 @@ import {reminderSourceVersion} from '../web/reminder-rules.mjs';
 const time=Date.parse('2026-11-06T04:00:00Z'),clientId='test.apps.googleusercontent.com',accessToken='test-token-only';
 test('Google identity verifies audience, send scope, expiry, verified school email and subject without leaking token in URLs',async()=>{
   const info={aud:clientId,scope:GMAIL_SCOPE,expires_in:3600,sub:'school-sub'},user={sub:'school-sub',email:SCHOOL_SENDER,email_verified:true};
-  const setup=(i=info,u=user)=>gmailProvider({clientId,now:()=>time,fetchGoogle:async(url,opts)=>{assert.ok(!url.includes(accessToken));assert.equal(opts.headers.Authorization,'Bearer '+accessToken);assert.equal(opts.redirect,'error');return Response.json(url.includes('tokeninfo')?i:u);}});
+  const setup=(i=info,u=user)=>gmailProvider({clientId,now:()=>time,fetchGoogle:async(url,opts)=>{assert.ok(!url.includes(accessToken));assert.equal(opts.headers.Authorization,'Bearer '+accessToken);assert.equal(opts.redirect,'error');if(url.includes('tokeninfo')){assert.equal(opts.method,'POST');assert.equal(opts.headers['Content-Type'],'application/x-www-form-urlencoded');}return Response.json(url.includes('tokeninfo')?i:u);}});
   assert.equal((await setup().identity(accessToken)).email,SCHOOL_SENDER);
   for(const patch of [{aud:'another-client'},{scope:'openid'},{expires_in:20},{sub:'other-sub'}])await assert.rejects(setup({...info,...patch}).identity(accessToken));
   for(const patch of [{email:'someone@example.com'},{email_verified:false},{sub:''}])await assert.rejects(setup(info,{...user,...patch}).identity(accessToken));
+});
+test('Google identity failures distinguish missing consent and provider errors without exposing credentials',async()=>{
+  const setup=fetchGoogle=>gmailProvider({clientId,fetchGoogle});
+  await assert.rejects(setup(async()=>Response.json({aud:clientId,scope:'openid',expires_in:3600})).identity(accessToken),/尚未允許寄信權限/);
+  await assert.rejects(setup(async()=>new Response(accessToken,{status:400})).identity(accessToken),e=>e.message.includes('（400）')&&!e.message.includes(accessToken));
+  await assert.rejects(setup(async()=>{throw new Error(accessToken);}).identity(accessToken),e=>e.message.includes('無法連線')&&!e.message.includes(accessToken));
 });
 test('Gmail send never retries rejection, timeout, ambiguous response or 5xx; only provider ID means sent',async()=>{
   for(const [response,status] of [[()=>Response.json({id:'gmail-id'}),'sent'],[()=>new Response('',{status:403}),'failed'],[()=>new Response('',{status:429}),'failed'],[()=>new Response('',{status:500}),'unknown'],[()=>Response.json({}),'unknown'],[()=>{throw new Error('token must never appear in error');},'unknown']]){

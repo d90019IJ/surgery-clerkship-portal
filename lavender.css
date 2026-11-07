@@ -70,3 +70,8 @@ dialog::backdrop{background:#30233c70}
 #filters .reminder-check:has(#contact-missing){display:flex;flex-direction:row;align-items:center;gap:.6rem;white-space:nowrap}#contact-missing{width:auto;min-height:0}
 
 .reminder-letter{margin-top:1.2rem;border-top:1px solid #d4cadc;padding-top:1rem;line-height:1.85}.reminder-letter th,.reminder-letter td{white-space:nowrap}.reminder-letter ul{padding-left:1.5rem}
+
+/* Two-step reminder workflow */
+.reminder-teacher-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}.reminder-teacher-head h3{margin:0}.reminder-teacher p{overflow-wrap:anywhere}.reminder-teacher table{min-width:620px}.reminder-footer{position:sticky;bottom:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:24px;padding:20px;background:#fff;border:1px solid #c9bdd5;border-radius:16px;box-shadow:0 4px 20px #3428421a}.reminder-footer p{margin:0;width:100%}.reminder-teacher .batch-check{margin:0}.reminder-teacher input[type=checkbox]{width:22px;height:22px}.reminder-footer .primary{min-height:48px}@media(max-width:650px){.reminder-footer{bottom:0;padding:14px}.reminder-footer button{flex:1}.reminder-teacher-head{align-items:flex-start;flex-direction:column}}
+
+.reminder-teacher-head .batch-check{flex-direction:row}

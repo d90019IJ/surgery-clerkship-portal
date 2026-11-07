@@ -119,3 +119,11 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 新增 database/reminder-mail.sql。clerk_mail_intents 不包含 Google token；clerk_mail_delivery_events 追加保存每次處理與結果。所有表啟用 RLS、禁止 anon/authenticated 存取。claim RPC 使用與批次建立相同的 transaction advisory lock 與 unique(batch_id,teacher_id)，阻擋並行、重複、未知結果的重寄。已寄出必須有 Gmail 郵件識別碼；這表示 Gmail 接受寄送，並非保證對方已收到。已明確拒絕的 failed 可在新的人工摘要確認後重試；sending/unknown 一律阻擋，需核對寄件備份後由維護人員查證，不可直接改成 failed 來強制重寄。紀錄另存 RFC Message-ID 供查證。
 
 後端部署增加 server/mail-config.mjs、server/gmail.mjs、server/reminder-mail.mjs。前端新增 web/mail-ui.mjs。tests/mail.test.mjs 使用假 Google HTTP 回應；tests/mail-storage.sql 在交易內使用合成資料並完整回滾，完全不呼叫 Gmail。既有 contacts、評分、核對與批次快照皆保留。
+
+## 簡化評分提醒（2026-11-07）
+
+主要入口改為「評分提醒」，同頁依老師列出收件信箱與學生實習明細。全選／取消全選限定目前搜尋範圍的可提醒老師；勾選僅保留在當次畫面。按「預覽並寄送」後依序保存有效核對、建立固定快照及本批確認，再顯示完整信件與最後寄送按鈕。只有按「確認寄出 N 封」會呼叫寄送端點；連結信箱及預覽不寄信。
+
+原有資料與歷史紀錄不遷移、不清除。最近一週已寄出、未結案及結果待查證的項目不列入全選。離開預覽後保留待寄快照，可從同頁「尚未完成的提醒」繼續；取消尚未寄出的提醒仍保留歷史。已寄出的部分永遠從繼續預覽中排除。每週續寄仍須重新勾選核對。名單、收件人、姓名、來源或通訊錄版本若在操作中改變，停止建立，不會悄悄增加收件人或學生。
+
+前端：web/simple-reminder-ui.mjs、web/reminder-workflow.mjs；沿用現有後端權限、寄送鎖與 Gmail 驗證，不新增排程。tests/reminder-workflow.test.mjs 驗證重複排除、名單異動、失敗中止及續用未寄草稿。畫面測試使用封鎖網路的本機假資料，未寄真實郵件。

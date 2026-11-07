@@ -18,6 +18,10 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
   function invalidate(){intent=null;drawSend();}
   function draw(){
     if(!$('mail-account'))return;
+    if(context?.simple&&connected()){
+      $('mail-account').innerHTML=`<div class="batch-notice"><b>學校信箱已連結：${esc(email)}</b> <button id="mail-connect" class="text-button">重新連結</button><p id="mail-status" role="status">${esc(notice)}</p></div>`;
+      $('mail-connect').onclick=connect;drawSend();return;
+    }
     $('mail-account').innerHTML=`<section class="batch-panel"><h2>學校信箱連結</h2><p>寄件帳號：<b>${esc(config?.sender||'d90019@nycu.edu.tw')}</b></p>${!config?.configured?'<p class="amber">尚待完成 Google 信箱授權設定。目前無法寄信；已保存的核對資料會保留。</p>':`<p>${connected()?'已連結 '+esc(email)+' · 本次授權有效至 '+esc(taipei(expiresAt)):'尚未連結，或本次授權已到期。'}</p><button id="mail-connect" class="secondary" ${!sdkReady?'disabled':''}>${connected()?'重新連結學校信箱':'連結學校信箱'}</button>${connected()?' <button id="mail-disconnect" class="text-button">中斷本次連線</button>':''}`}<p class="hint">連結信箱、保存核對、查看寄送摘要都不會寄信。只有按最後的「確認寄出」才會寄送。重新整理或登出後需重新連結。</p><p id="mail-status" role="status">${esc(notice)}</p></section>`;
     if($('mail-connect'))$('mail-connect').onclick=connect;
     if($('mail-disconnect'))$('mail-disconnect').onclick=()=>{if(busy)return;accessToken='';email='';expiresAt=0;intent=null;notice='已中斷本次連線，不會寄信。';draw();};
@@ -26,12 +30,20 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
   function drawSend(){
     const host=$('mail-send-panel'),b=context?.batch;if(!host)return;
     if(!b||b.cancelled_at){host.innerHTML='';return;}
+    if(context.simple){drawSimple(host,b);return;}
     const count=b.messages.filter(m=>b.confirmed.includes(m.teacherId)&&(!m.delivery||m.delivery.status==='failed')).length;
     const dirty=context.dirty(),ready=connected()&&count>0&&!dirty;
     host.innerHTML=`<section class="batch-panel"><h2>確認寄出</h2><p>${dirty?'請先保存上方勾選，再核對寄送摘要。':`本批已保存確認、尚可寄送：${count} 封。已寄出及結果待查證的信件不會重寄。`}</p>${intent?`<div class="mail-final"><h3>最後核對本次寄送</h3><p>寄件人：${esc(intent.sender)}<br>此摘要有效至 ${esc(taipei(intent.expiresAt))}</p><ul>${intent.messages.map(m=>`<li><b>${esc(m.teacherName)}</b> · ${m.studentCount} 位學生<br>收件人：${m.to.map(esc).join('、')}<br>主旨：${esc(m.subject)}</li>`).join('')}</ul><p>內容為上方已核對的完整信件。按下後會立即逐封寄送，請留在本頁。</p><button id="mail-send-final" class="primary">確認寄出（${intent.messages.length} 封）</button> <button id="mail-send-cancel" class="secondary">先不寄送</button></div>`:`<button id="mail-prepare" class="primary" ${!ready?'disabled':''}>核對寄送摘要（不寄信）</button>${!connected()?'<p class="hint">請先完成上方學校信箱連結。</p>':''}`}<p id="mail-progress" role="status"></p></section>`;
     if($('mail-prepare'))$('mail-prepare').onclick=()=>void prepare();
     if($('mail-send-final'))$('mail-send-final').onclick=()=>void send();
     if($('mail-send-cancel'))$('mail-send-cancel').onclick=()=>{intent=null;drawSend();};
+  }
+  function drawSimple(host,b){
+    const messages=b.messages.filter(m=>b.confirmed.includes(m.teacherId)&&!m.delivery);
+    host.innerHTML=`<section class="batch-panel"><p class="eyebrow">步驟 2／2</p><h2>核對收件人與完整內容</h2><p>寄件人：<b>${esc(config?.sender||'d90019@nycu.edu.tw')}</b> · ${messages.length} 封，每位老師一封</p>${messages.map(m=>`<article class="batch-message"><h3>${esc(m.teacherName)}老師</h3><p><b>收件人：</b>${m.to.map(esc).join('、')}<br><b>主旨：</b>${esc(m.subject)}</p><details><summary>展開完整信件（${m.students.length} 位學生）</summary><iframe class="batch-letter" title="${esc(m.teacherName)}老師的完整信件" sandbox="" referrerpolicy="no-referrer" srcdoc="${esc('<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><style>body{font:17px/1.8 system-ui;color:#292332;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #c9c1d1;padding:8px;text-align:left}th{background:#eee9f3}</style>'+m.html+'</html>')}"></iframe></details></article>`).join('')}<div class="reminder-footer"><button id="mail-send-cancel" class="secondary">返回名單，先不寄送</button>${connected()?`<button id="mail-send-final" class="primary" ${!intent?'disabled':''}>確認寄出 ${intent?.messages.length??messages.length} 封</button>${!intent?'<button id="mail-prepare" class="secondary">重新核對寄送狀態</button>':''}`:'<p>請先連結上方學校信箱，連結後即可確認寄出。</p>'}<p id="mail-progress" role="status">${intent?'尚未寄出；請核對後再按確認。':'尚未取得寄送確認，不能寄信。'}</p></div></section>`;
+    $('mail-send-cancel').onclick=()=>{if(busy)return;const back=context.onBack;intent=null;context=null;back();};
+    if($('mail-send-final'))$('mail-send-final').onclick=()=>void send();
+    if($('mail-prepare'))$('mail-prepare').onclick=()=>void prepare();
   }
   function lock(value){busy=value;document.querySelectorAll('#content button,#content input').forEach(e=>{if(value){e.dataset.mailDisabled=String(e.disabled);e.disabled=true;}else if('mailDisabled' in e.dataset){e.disabled=e.dataset.mailDisabled==='true';delete e.dataset.mailDisabled;}});}
   function message(text){notice=text;if($('mail-status'))$('mail-status').textContent=text;}
@@ -46,7 +58,7 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
           if(response.error||!response.access_token){failed();return;}
           try{const identity=await api('mail-connect',{accessToken:response.access_token});if(generation!==epoch)return;accessToken=response.access_token;expiresAt=identity.expiresAt;email=identity.email;notice='已連結學校信箱；這次連結操作沒有寄信。';}
           catch(e){if(generation!==epoch)return;accessToken='';expiresAt=0;email='';notice=e.message;}
-          finally{if(generation===epoch){lock(false);draw();}}
+          finally{if(generation===epoch){lock(false);draw();if(context?.simple&&connected())await prepare();}}
         }});
       client.requestAccessToken({prompt:'select_account'});
     }catch{failed();}
@@ -59,7 +71,8 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
     finally{if(generation===epoch){lock(false);drawSend();}}
   }
   async function send(){
-    if(busy||!intent||!connected()||context.dirty())return;
+    if(busy||!intent||context.dirty())return;
+    if(!connected()){intent=null;message('信箱連線已到期，請重新連結；尚未寄信。');draw();return;}
     if(Date.now()>=Date.parse(intent.expiresAt)){intent=null;message('寄送摘要已過期，請重新核對。');drawSend();return;}
     const generation=epoch,b=context.batch,approved=intent;intent=null;lock(true);let sent=0;
     try{
@@ -74,8 +87,9 @@ export function createMailUI({api,esc,$,taipei,onChanged}){
       }
       message(`本次 ${sent} 封已由 Google 接受寄送，可至寄送紀錄查看。`);
     }catch(e){if(generation===epoch)message(`本次已確認寄出 ${sent} 封。${e.message} 請查看最新寄送紀錄；系統不會自動重試。`);}
-    finally{if(generation===epoch){lock(false);await onChanged();}}
+    finally{if(generation===epoch){lock(false);await onChanged(notice);}}
   }
   window.addEventListener('beforeunload',e=>{if(busy)e.preventDefault();});
-  return {load,mount,invalidate,isBusy:()=>busy,reset:()=>{epoch++;lock(false);config=null;accessToken='';expiresAt=0;email='';intent=null;context=null;client=null;notice='';sdkReady=false;}};
+  async function preview(batch,onBack){context={batch,dirty:()=>false,simple:true,onBack};intent=null;draw();if(connected())await prepare();}
+  return {load,mount,preview,invalidate,isBusy:()=>busy,reset:()=>{epoch++;lock(false);config=null;accessToken='';expiresAt=0;email='';intent=null;context=null;client=null;notice='';sdkReady=false;}};
 }

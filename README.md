@@ -112,7 +112,7 @@ OSCE 與護照完成率儲存在 Supabase clerk_osce_scores；以學號、梯次
 
 新增 Google Identity Services token model，僅請求 gmail.send、openid、userinfo.email。前端 access token 只保留在記憶體，登出、重新整理後消失；資料庫、寄送紀錄與 GitHub 都不存 token、refresh token 或信箱密碼。後端驗證 token audience、有效期、gmail.send scope、Google 驗證過的 email 與 subject，只接受 d90019@nycu.edu.tw。
 
-Google 設定尚待學校帳號登入完成：在使用者擁有的 Google Cloud 專案啟用 Gmail API，設定 OAuth 同意畫面（僅學校帳號使用；若採 External Testing，僅加入指定學校信箱為測試使用者），建立 Web application OAuth client，Authorized JavaScript origin 為 https://d90019ij.github.io（不含路徑）。將公開的 client ID 填入 server/mail-config.mjs 並重新部署後端；不要填 client secret。空 client ID 時所有寄送端點關閉，頁面清楚提示尚待設定。實際登入與 Google 授權由使用者完成，不測試寄真實郵件。
+2026-11-07 已在學校組織 nycu.edu.tw 建立 Google Cloud 專案 Surgery Clerkship Mail（surgery-clerkship-mail），啟用 Gmail API，OAuth 目標對象設為內部。專案未連結計費帳戶，未啟用免費試用。Web application 用戶端為 Surgery Clerkship Portal Web，Authorized JavaScript origin 僅 https://d90019ij.github.io（不含路徑）；GIS token model 不需重新導向 URI。公開 client ID 存於 server/mail-config.mjs；未儲存或使用 client secret。空 client ID 時所有寄送端點關閉。實際登入與 Google 信箱授權仍須由使用者確認，不測試寄真實郵件。
 
 操作：確認仍未評分 → 建立批次 → 核對完整信件並保存本批確認 → 連結學校信箱 → 核對寄送摘要（不寄信） → 確認寄出。摘要有效十分鐘，綁定助教身分、Google 帳號、批次版本及老師集合；每封仍重新檢查最新來源。修改勾選會丟棄摘要，必須重新保存。每位老師的兩個地址放同一封信的 To。
 
